@@ -1,0 +1,31 @@
+name: Sync fork with upstream
+
+on:
+  schedule:
+    # Run every 8 hours at 42 minutes
+    - cron: '42 */8 * * *'
+  # Allow manual triggers
+  workflow_dispatch:
+
+jobs:
+  sync-fork:
+    runs-on: ubuntu-latest
+    name: Sync fork
+
+    steps:
+      # https://github.com/actions/checkout
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+          token: ${{ secrets.SYNC_FORK_TOKEN }}
+
+      # https://github.com/repo-sync/github-sync
+      - name: GitHub Sync
+        uses: repo-sync/github-sync@3832fe8e2be32372e1b3970bbae8e7079edeec88 # v2.3.0
+        with:
+          source_repo: https://github.com/github/safe-settings.git
+          source_branch: "*" # Sync all branches
+          destination_branch: "*" # Sync all branches
+          github_token: ${{ secrets.SYNC_FORK_TOKEN }}
+          sync_tags: "true"
