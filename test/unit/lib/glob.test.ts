@@ -74,5 +74,29 @@ describe('glob test', function () {
     str = 'java/csrf-protection-disabled'
     expect(str.search(pattern)>=0).toBeTruthy()
   })
-  
+
+  test('Test Glob with special regex characters', () => {
+    // Test for repository names with a period (.)
+    let pattern = new Glob('.sentry')
+    let str = '.sentry'
+    expect(str.search(pattern)>=0).toBeTruthy()
+    str = 'some-repo'
+    expect(str.search(pattern)>=0).toBeFalsy()
+    str = 'other-sentry-repo'
+    expect(str.search(pattern)>=0).toBeFalsy()
+
+    // Test for other special regex characters
+    pattern = new Glob('repo+name')
+    str = 'repo+name'
+    expect(str.search(pattern)>=0).toBeTruthy()
+    str = 'reponame'
+    expect(str.search(pattern)>=0).toBeFalsy()
+
+    pattern = new Glob('repo[1-3]')
+    str = 'repo[1-3]'
+    expect(str.search(pattern)>=0).toBeTruthy()
+    str = 'repo1'
+    expect(str.search(pattern)>=0).toBeFalsy()
+  })
+
 })
