@@ -6,91 +6,22 @@ const Glob = require('./lib/glob')
 const ConfigManager = require('./lib/configManager')
 const NopCommand = require('./lib/nopcommand')
 const env = require('./lib/env')
+const { setupRoutes } = require('./lib/routes')
+const { initCache } = require('./lib/installationCache')
+const { hubSyncHandler } = require('./lib/hubSyncHandler')
 
 let deploymentConfig
 
 module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) => {
   let appSlug = 'safe-settings'
-  async function syncAllSettings (nop, context, repo = context.repo(), ref) {
-    try {
-      deploymentConfig = await loadYamlFileSystem()
-      robot.log.debug(`deploymentConfig is ${JSON.stringify(deploymentConfig)}`)
-      const configManager = new ConfigManager(context, ref)
-      const runtimeConfig = await configManager.loadGlobalSettingsYaml()
-      const config = Object.assign({}, deploymentConfig, runtimeConfig)
-      robot.log.debug(`config for ref ${ref} is ${JSON.stringify(config)}`)
-      if (ref) {
-        return Settings.syncAll(nop, context, repo, config, ref)
-      } else {
-        return Settings.syncAll(nop, context, repo, config)
-      }
-    } catch (e) {
-      if (nop) {
-        let filename = env.SETTINGS_FILE_PATH
-        if (!deploymentConfig) {
-          filename = env.DEPLOYMENT_CONFIG_FILE_PATH
-          deploymentConfig = {}
-        }
-        const nopcommand = new NopCommand(filename, repo, null, e, 'ERROR')
-        robot.log.error(`NOPCOMMAND ${JSON.stringify(nopcommand)}`)
-        Settings.handleError(nop, context, repo, deploymentConfig, ref, nopcommand)
-      } else {
-        throw e
-      }
-    }
-  }
 
-  async function syncSubOrgSettings (nop, context, suborg, repo = context.repo(), ref) {
-    try {
-      deploymentConfig = await loadYamlFileSystem()
-      robot.log.debug(`deploymentConfig is ${JSON.stringify(deploymentConfig)}`)
-      const configManager = new ConfigManager(context, ref)
-      const runtimeConfig = await configManager.loadGlobalSettingsYaml()
-      const config = Object.assign({}, deploymentConfig, runtimeConfig)
-      robot.log.debug(`config for ref ${ref} is ${JSON.stringify(config)}`)
-      return Settings.syncSubOrgs(nop, context, suborg, repo, config, ref)
-    } catch (e) {
-      if (nop) {
-        let filename = env.SETTINGS_FILE_PATH
-        if (!deploymentConfig) {
-          filename = env.DEPLOYMENT_CONFIG_FILE_PATH
-          deploymentConfig = {}
-        }
-        const nopcommand = new NopCommand(filename, repo, null, e, 'ERROR')
-        robot.log.error(`NOPCOMMAND ${JSON.stringify(nopcommand)}`)
-        Settings.handleError(nop, context, repo, deploymentConfig, ref, nopcommand)
-      } else {
-        throw e
-      }
-    }
-  }
+  // Initialize all routes (static UI + API) via centralized module
+  setupRoutes(robot, getRouter)
 
-  async function syncSettings (nop, context, repo = context.repo(), ref) {
-    try {
-      deploymentConfig = await loadYamlFileSystem()
-      robot.log.debug(`deploymentConfig is ${JSON.stringify(deploymentConfig)}`)
-      const configManager = new ConfigManager(context, ref)
-      const runtimeConfig = await configManager.loadGlobalSettingsYaml()
-      const config = Object.assign({}, deploymentConfig, runtimeConfig)
-      robot.log.debug(`config for ref ${ref} is ${JSON.stringify(config)}`)
-      return Settings.sync(nop, context, repo, config, ref)
-    } catch (e) {
-      if (nop) {
-        let filename = env.SETTINGS_FILE_PATH
-        if (!deploymentConfig) {
-          filename = env.DEPLOYMENT_CONFIG_FILE_PATH
-          deploymentConfig = {}
-        }
-        const nopcommand = new NopCommand(filename, repo, null, e, 'ERROR')
-        robot.log.error(`NOPCOMMAND ${JSON.stringify(nopcommand)}`)
-        Settings.handleError(nop, context, repo, deploymentConfig, ref, nopcommand)
-      } else {
-        throw e
-      }
-    }
-  }
+  // Initialize installation cache (env-controlled prefetch)
+  initCache(robot)
 
-  async function renameSync (nop, context, repo = context.repo(), rename, ref) {
+  async function renameSync(nop, context, repo = context.repo(), rename, ref) {
     try {
       deploymentConfig = await loadYamlFileSystem()
       robot.log.debug(`deploymentConfig is ${JSON.stringify(deploymentConfig)}`)
@@ -115,13 +46,14 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
       }
     }
   }
+
   /**
    * Loads the deployment config file from file system
    * Do this once when the app starts and then return the cached value
    *
    * @return The parsed YAML file
    */
-  async function loadYamlFileSystem () {
+  async function loadYamlFileSystem() {
     if (deploymentConfig === undefined) {
       const deploymentConfigPath = env.DEPLOYMENT_CONFIG_FILE_PATH
       if (fs.existsSync(deploymentConfigPath)) {
@@ -133,7 +65,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     return deploymentConfig
   }
 
-  function getAllChangedSubOrgConfigs (payload) {
+  function getAllChangedSubOrgConfigs(payload) {
     const pattern = Settings.SUB_ORG_PATTERN
 
     const getMatchingFiles = (commits, type) =>
@@ -150,7 +82,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     }))
   }
 
-  function getAllChangedRepoConfigs (payload, owner) {
+  function getAllChangedRepoConfigs(payload, owner) {
     const pattern = Settings.REPO_PATTERN
 
     const getMatchingFiles = (commits, type) =>
@@ -167,7 +99,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     }))
   }
 
-  function getChangedRepoConfigName (files, owner) {
+  function getChangedRepoConfigName(files, owner) {
     const pattern = Settings.REPO_PATTERN
 
     const modifiedFiles = files.filter((s) => pattern.test(s))
@@ -178,7 +110,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     }))
   }
 
-  function getChangedSubOrgConfigName (files) {
+  function getChangedSubOrgConfigName(files) {
     const pattern = Settings.SUB_ORG_PATTERN
 
     const modifiedFiles = files.filter((s) => pattern.test(s))
@@ -188,7 +120,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
       path: modifiedFile
     }))
   }
-  async function createCheckRun (context, pull_request, head_sha, head_branch) {
+  async function createCheckRun(context, pull_request, head_sha, head_branch) {
     const { payload } = context
     // robot.log.debug(`Check suite was requested! for ${context.repo()} ${pull_request.number} ${head_sha} ${head_branch}`)
     const res = await context.octokit.checks.create({
@@ -200,7 +132,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     robot.log.debug(JSON.stringify(res, null))
   }
 
-  async function info () {
+  async function info() {
     const github = await robot.auth()
     const installations = await github.paginate(
       github.apps.listInstallations.endpoint.merge({ per_page: 100 })
@@ -215,7 +147,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     }
   }
 
-  async function syncInstallation (nop = false) {
+  async function syncInstallation(nop = false) {
     robot.log.trace('Fetching installations')
     const github = await robot.auth()
 
@@ -519,6 +451,19 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
       return
     }
     return createCheckRun(context, pull_request, payload.pull_request.head.sha, payload.pull_request.head.ref)
+  })
+
+  /**
+   * @description Handle pull_request.closed events to support hub synchronization
+   * @param {Object} context - The context object provided by Probot
+   */
+  robot.on('pull_request.closed', async context => {
+    try {
+      await hubSyncHandler(robot, context)
+    } catch (err) {
+      robot.log.error(`pull_request.closed handler failed: ${err && err.message ? err.message : err}`)
+    }
+    return null
   })
 
   robot.on(['check_suite.rerequested'], async context => {
