@@ -20,7 +20,7 @@
 }
 
 [data-theme="dark"] {
-  --bg-primary: rgb(13,17,22);
+  --bg-primary: rgb(13, 17, 22);
   --bg-secondary: #444444;
   --bg-accent: #30363d;
   --text-primary: #f0f6fc;
@@ -86,7 +86,8 @@ body.light-theme .nav-link {
 
 [data-theme="dark"] .nav-link,
 body.dark-theme .nav-link {
-  color: #f6f8fa !important;
+  /* color: #f6f8fa !important; */
+  color: #6c757d !important;
 }
 
 /* title bar nav tabs */
@@ -104,9 +105,9 @@ body.light-theme .nav-tabs {
 /* Apply theme variables to main element */
 main {
   color: var(--text-primary) !important;
-  padding: 1rem;
+  /* padding: 1rem; */
   border-radius: 12px;
-  margin-top: 1rem;
+  /* margin-top: 1rem; */
 }
 
 /* Theme Utility Classes */
@@ -135,12 +136,15 @@ main {
 }
 
 .theme-border {
-  border-color: var(--border-color) !important; /* override bootstrap .border */
+  border-color: var(--border-color) !important;
+  /* override bootstrap .border */
 }
 
-.border.theme-border, .theme-border.border {
+.border.theme-border,
+.theme-border.border {
   border-color: var(--border-color) !important;
 }
+
 /* Global Font Utility Classes */
 .dark-font {
   color: #f6f8fa;
@@ -209,7 +213,7 @@ main {
   background-color: var(--bg-accent) !important;
 }
 
-.text-muted  {
+.text-muted {
   color: var(--text-secondary) !important;
 }
 
@@ -225,6 +229,8 @@ element {
   color: var(--text-primary) !important;
   background-color: var(--bg-secondary) !important;
   border: 1px solid var(--border-color) !important;
+  margin-left: 10px !important;
+  gap: 1.5rem !important;
 }
 
 .input-group-text {
@@ -241,19 +247,22 @@ element {
 }
 
 /* Env vars table dark mode override */
-[data-theme="dark"] .env-vars table, body.dark-theme .env-vars table {
+[data-theme="dark"] .env-vars table,
+body.dark-theme .env-vars table {
   background-color: var(--bg-primary) !important;
 }
-[data-theme="dark"] .env-vars thead th, body.dark-theme .env-vars thead th {
+
+[data-theme="dark"] .env-vars thead th,
+body.dark-theme .env-vars thead th {
   background-color: var(--bg-secondary) !important;
 }
 
-th{
+th {
   font-weight: 600;
   background-color: var(--bg-secondary) !important;
 }
 
-tr td{
+tr td {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-color) !important;

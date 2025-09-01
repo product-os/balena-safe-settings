@@ -1,7 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 import React from "react";
-import { GearIcon, ListUnorderedIcon, SunIcon, MoonIcon } from "@primer/octicons-react";
+import { GlobeIcon, GearIcon, ListUnorderedIcon, SunIcon, MoonIcon } from "@primer/octicons-react";
 import { useTheme } from './ThemeContext';
 import './TitleBar.css';
 
@@ -37,13 +37,13 @@ export default function TitleBar() {
             <li className="nav-item">
               <a
                 className={`nav-link fw-light d-flex align-items-center position-relative menu-hover nav-link-custom${isDark ? ' dark-font' : ' light-font'}`}
-                href="/dashboard/organizations"
+                href="/dashboard/safe-settings-hub"
               >
                 <span className="me-1">
-                  <ListUnorderedIcon size={16} />
+                  <GlobeIcon size={16} />
                 </span>
-                Organizations
-                {pathname === "/dashboard/organizations" && (
+                Safe-Settings Hub
+                {pathname === "/dashboard/safe-settings-hub" && (
                   <span className="menu-active-indicator"></span>
                 )}
               </a>
@@ -51,13 +51,13 @@ export default function TitleBar() {
             <li className="nav-item">
               <a
                 className={`nav-link fw-light d-flex align-items-center position-relative menu-hover nav-link-custom${isDark ? ' dark-font' : ' light-font'}`}
-                href="/dashboard/safe-settings-hub"
+                href="/dashboard/organizations"
               >
                 <span className="me-1">
-                  <GearIcon size={16} />
+                  <ListUnorderedIcon size={16} />
                 </span>
-                Safe-Settings Hub
-                {pathname === "/dashboard/safe-settings-hub" && (
+                Organizations
+                {pathname === "/dashboard/organizations" && (
                   <span className="menu-active-indicator"></span>
                 )}
               </a>

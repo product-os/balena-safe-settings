@@ -32,3 +32,25 @@ Environment variables specific to the 'Sync-Feature'
 | `SAFE_SETTINGS_HUB_DIRECT_PUSH` | Use a PR or direct commit | false |
 
 
+---
+---
+
+## Hub Sync Scenarios
+
+1. Sync the `Hub Admin Repo` changes to a `Safe-Settings Admin Repo` in **the same ORG** as the Hub Admin Repo.
+
+2. Sync the `Hub Admin changes` to a `Safe-Settings Admin Repo` in **a different ORG**. 
+
+3. _`'Global'`_ `Hub Admin Repo` updates. 
+Changes will `applied to all Organization`
+
+
+```mermaid
+flowchart LR
+PR --> Hub
+Hub --> ORG-A
+Hub -..- ORG-B
+Hub -..- ORG-C
+
+
+```

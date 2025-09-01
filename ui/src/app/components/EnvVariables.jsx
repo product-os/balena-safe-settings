@@ -153,8 +153,7 @@ export default function EnvVariables() {
         </div>
       )}
       <div className="mt-3 d-flex justify-content-between small theme-text-secondary">
-  <span>{sorted.length} shown / {rows.length} total</span>
-        {lastFetchedAt && <span>Fetched {lastFetchedAt.toLocaleTimeString()}</span>}
+        <span>{sorted.length} shown / {rows.length} total</span>
       </div>
     </div>
   );
