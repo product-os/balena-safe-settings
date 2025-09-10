@@ -12,7 +12,7 @@ export default function SafeSettingsHubConfigPage() {
           </h2>
           <p className="theme-text-secondary">
             Listing files maintained by the Safe-Settings Global configuration (all ORG's).
-            Files are retrieved from `/api/safe-settings-hub/content`.
+            Files are retrieved from `/api/safe-settings/hub/content`.
           </p>
         </div>
         <br />

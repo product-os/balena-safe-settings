@@ -11,7 +11,7 @@ export default function OrganizationsPage() {
             Organizations
           </h2>
           <p className="theme-text-secondary">
-            List all the installations of the App and the last time Safe-settings configurations were synced.
+            List all the Organizations where the Safe-Settings App is installed and the last time Safe-settings configurations were synced.
           </p>
         </div>
 

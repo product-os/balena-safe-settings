@@ -44,13 +44,40 @@ Environment variables specific to the 'Sync-Feature'
 3. _`'Global'`_ `Hub Admin Repo` updates. 
 Changes will `applied to all Organization`
 
+---
 
-```mermaid
-flowchart LR
-PR --> Hub
-Hub --> ORG-A
-Hub -..- ORG-B
-Hub -..- ORG-C
+## Safe-Settings Hub API endpoints
 
+### API Endpoints
 
-```
+The following table summarizes the Safe Settings API endpoints:
+
+| Endpoint                                 | Method | Purpose                                              | Example Usage |
+|------------------------------------------|--------|------------------------------------------------------|---------------|
+| `/api/safe-settings/installation`        | GET    | Organization installation, repo, and sync status      | Fetch org status |
+| `/api/safe-settings/hub/content`         | GET    | List hub repo files/directories                      | List hub files |
+| `/api/safe-settings/hub/content/*`       | GET    | Fetch specific file or directory from hub repo        | Get file content |
+| `/api/safe-settings/hub/import`          | POST   | Import settings from orgs into the hub                | Import org settings |
+| `/api/safe-settings/env`                 | GET    | App environment/config variables                      | Get env vars |
+
+**Examples:**
+- Fetch org installation status:
+  ```http
+  GET /api/safe-settings/installation
+  ```
+- Import settings from orgs:
+  ```http
+  POST /api/safe-settings/hub/import
+  Body: { "orgs": ["org1", "org2"] }
+  ```
+- List hub repo files:
+  ```http
+  GET /api/safe-settings/hub/content?ref=main&recursive=true
+  ```
+- Get environment variables:
+  ```http
+  GET /api/safe-settings/env
+  ```
+
+---
+

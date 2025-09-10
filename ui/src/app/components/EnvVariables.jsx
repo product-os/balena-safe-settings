@@ -19,7 +19,7 @@ export default function EnvVariables() {
   const fetchData = () => {
     if (!hydrated) return;
     setLoading(true); setError(null);
-    fetch(`/api/settings/env${includeInfra ? '?includeInfra=true' : ''}`)
+    fetch(`/api/safe-settings/app/env${includeInfra ? '?includeInfra=true' : ''}`)
       .then(r => {
         if (!r.ok) {
           throw new Error(`Unable to retrieve environment variables (HTTP ${r.status}). Please try again later.`);
@@ -98,23 +98,7 @@ export default function EnvVariables() {
               <input className="form-control theme-bg-primary theme-text-primary theme-border border" placeholder="Filter by key or value" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
         </div>
-        <div className="col-md-3">
-          <label className="form-label small theme-text-secondary">Options</label>
-          <div className="form-check form-switch">
-            <input className="form-check-input" id="includeInfra" type="checkbox" checked={includeInfra} onChange={e => setIncludeInfra(e.target.checked)} />
-            <label className="form-check-label small" htmlFor="includeInfra">Include infra keys</label>
-          </div>
-          <div className="form-check form-switch">
-            <input className="form-check-input" id="revealAll" type="checkbox" checked={revealAll} onChange={e => setRevealAll(e.target.checked)} />
-            <label className="form-check-label small" htmlFor="revealAll">Reveal sensitive</label>
-          </div>
-        </div>
-        <div className="col-md-5 text-end">
-          <div className="btn-group" role="group">
-            <button className="btn btn-sm btn-outline-secondary" onClick={fetchData} disabled={loading}><SyncIcon size={14} className={loading ? 'spin' : ''} /> Refresh</button>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => setRevealAll(r => !r)}>{revealAll ? <EyeClosedIcon size={14} /> : <EyeIcon size={14} />} {revealAll ? 'Hide all' : 'Reveal all'}</button>
-          </div>
-        </div>
+  {/* Removed options and buttons section for a cleaner environment page UI */}
       </div>
 
       {loading && <div className="py-4 text-center theme-text-secondary">Loading…</div>}

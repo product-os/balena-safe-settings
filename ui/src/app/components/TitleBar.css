@@ -4,7 +4,7 @@
 .title-header {
   background: #333;
   color: #fff;
-  min-height: 60px; /* Ensure consistent height */
+  min-height: 40px; /* Ensure consistent height */
 }
 
 /* Theme-specific header styles */
@@ -22,7 +22,7 @@ body.dark-theme .title-header {
 
 /* Navigation bar - consistent height and styling */
 .title-nav {
-  min-height: 48px; /* Consistent nav height */
+  min-height: 40px; /* Consistent nav height */
   border-bottom: 1px solid var(--border-color, #dee2e6) !important;
   background: var(--bg-secondary, #f6f8fa); /* Default light theme background */
 }
@@ -102,7 +102,7 @@ body.dark-theme .nav-link-custom {
 /* Navigation menu items */
 .nav-link.menu-hover {
   border-radius: 5px !important;
-  margin: 10px 10px 10px 10px !important;
+  margin: 10px 10px 9px 10px !important;
   padding: 5px 10px !important;
   transition: background 0.15s, color 0.15s;
   border: 1px solid transparent !important; /* Invisible border to maintain box model */

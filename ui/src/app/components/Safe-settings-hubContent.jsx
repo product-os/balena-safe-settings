@@ -6,18 +6,6 @@ import { useHydrated } from '../hooks/useHydrated';
 // Match the left index width and reuse for the search input
 const LEFT_COL_WIDTH = 320;
 
-const MOCK_TREE = {
-  name: '.github',
-  path: '.github',
-  type: 'dir',
-  lastCommitAt: new Date().toISOString(),
-  entries: [
-    { name: 'CODEOWNERS', path: '.github/CODEOWNERS', type: 'file', lastCommitAt: new Date().toISOString(), lastCommitMessage: 'add CODEOWNERS' },
-    { name: 'workflows', path: '.github/workflows', type: 'dir', lastCommitAt: new Date().toISOString(), entries: [
-      { name: 'ci.yml', path: '.github/workflows/ci.yml', type: 'file', lastCommitAt: new Date().toISOString(), lastCommitMessage: 'ci: add' }
-    ] }
-  ]
-};
 
 export default function SafeSettingsHubContent3b() {
   const hydrated = useHydrated();
@@ -32,13 +20,13 @@ export default function SafeSettingsHubContent3b() {
   const fetchData = () => {
     if (!hydrated) return;
     setLoading(true); setError(null);
-    fetch('/api/safe-settings-hub/content?fetchContent=true')
+    fetch('/api/safe-settings/hub/content?fetchContent=true')
       .then(r => {
         if (!r.ok) throw new Error(`Unable to retrieve safe-settings hub content (HTTP ${r.status})`);
         return r.json();
       })
       .then(json => { setRootTree(json); setLastFetchedAt(new Date()); })
-      .catch(() => setRootTree(MOCK_TREE))
+      .catch((error) => { setError("Unable to load content. Please try again later."); setRootTree(null); })
       .finally(() => setLoading(false));
   };
 
@@ -48,10 +36,16 @@ export default function SafeSettingsHubContent3b() {
     if (!node) return null;
     const term = search.toLowerCase();
     const matches = (n) => !term || (n.name && n.name.toLowerCase().includes(term)) || (n.path && n.path.toLowerCase().includes(term));
-    if (node.type === 'file') return matches(node) ? node : null;
+    if (node.type === 'file') {
+      return matches(node) ? node : null;
+    }
     if (node.type === 'dir') {
-      const children = (node.entries || []).map(filterTree).filter(Boolean);
-      if (matches(node) || children.length) return { ...node, entries: children };
+      const filteredEntries = (node.entries || [])
+        .map(child => filterTree(child))
+        .filter(Boolean);
+      if (matches(node) || filteredEntries.length > 0) {
+        return { ...node, entries: filteredEntries };
+      }
       return null;
     }
     return null;

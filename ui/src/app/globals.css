@@ -43,7 +43,7 @@ body.dark-theme {
   --bg-secondary: #444444;
   --bg-accent: #30363d;
   --text-primary: #f0f6fc;
-  --text-secondary: #e3e3e3;
+  --text-secondary: #b3b3b3;
 }
 
 /* Global Theme Styles */
@@ -56,32 +56,32 @@ body {
 /* Theme-specific body styles using data-theme */
 [data-theme="light"] body,
 body.light-theme {
-  background: #fff;
-  color: #24292f;
+  background: #fff !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] body,
 body.dark-theme {
-  background: rgb(45, 46, 47);
-  color: #f6f8fa;
+  background: rgb(24, 24, 24) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Global Main Element Theme */
 [data-theme="light"] main,
 body.light-theme main {
-  background: #fff;
-  color: #24292f;
+  background: #fff !important;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] main,
 body.dark-theme main {
   /* background: #161b22; */
-  color: #f6f8fa;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="light"] .nav-link,
 body.light-theme .nav-link {
-  color: #24292f;
+  color: var(--text-primary) !important;
 }
 
 [data-theme="dark"] .nav-link,
@@ -106,7 +106,7 @@ body.light-theme .nav-tabs {
 main {
   color: var(--text-primary) !important;
   /* padding: 1rem; */
-  border-radius: 12px;
+  border-radius: 12px !important;
   /* margin-top: 1rem; */
 }
 
@@ -147,11 +147,11 @@ main {
 
 /* Global Font Utility Classes */
 .dark-font {
-  color: #f6f8fa;
+  color: var(--text-primary) !important;
 }
 
 .light-font {
-  color: #24292f;
+  color: var(--text-primary) !important;
 }
 
 /* Organizations Table Styles */

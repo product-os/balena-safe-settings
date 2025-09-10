@@ -38,3 +38,32 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 This directory contains example API routes for the headless API app.
 
 For more details, see [route.js file convention](https://nextjs.org/docs/app/api-reference/file-conventions/route).
+
+---
+
+```mermaid
+
+sequenceDiagram
+    participant User
+    participant OrganizationsTable.jsx
+    participant HubOrgGraph.jsx
+    participant Next.js API Proxy
+    participant Backend (Express)
+    participant GitHub API
+
+    User->>OrganizationsTable.jsx: Loads Organization page
+    OrganizationsTable.jsx->>Next.js API Proxy: GET /api/safe-settings/installation
+    Next.js API Proxy->>Backend (Express): GET /api/safe-settings/installation
+    Backend (Express)->>GitHub API: Fetch org installations, repo status, commit info, sync status
+    GitHub API-->>Backend (Express): Returns org data
+    Backend (Express)-->>Next.js API Proxy: Returns installations array
+    Next.js API Proxy-->>OrganizationsTable.jsx: Returns installations array
+    OrganizationsTable.jsx->>HubOrgGraph.jsx: Passes org data (hasConfigRepo, isInSync)
+    HubOrgGraph.jsx->>Next.js API Proxy: (if fetching own data) GET /api/safe-settings/installation
+    Next.js API Proxy->>Backend (Express): GET /api/safe-settings/installation
+    Backend (Express)->>GitHub API: (repeat fetch if needed)
+    GitHub API-->>Backend (Express): Returns org data
+    Backend (Express)-->>Next.js API Proxy: Returns installations array
+    Next.js API Proxy-->>HubOrgGraph.jsx: Returns installations array
+    User->>OrganizationsTable.jsx: Interacts with table/graph (tooltips, legend, etc.)
+```
