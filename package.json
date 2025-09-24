@@ -32,7 +32,7 @@
     "eta": "^3.5.0",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
-    "minimatch": "^10.0.1",
+    "minimatch": "^10.0.3",
     "next": "^15.5.2",
     "node-cron": "^3.0.2",
     "octokit": "^5.0.2",

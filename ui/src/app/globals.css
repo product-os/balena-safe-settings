@@ -267,3 +267,11 @@ tr td {
   color: var(--text-primary) !important;
   border-color: var(--border-color) !important;
 }
+
+.log-error {
+  color: #c00 !important;
+}
+
+.log-warn {
+  color: #b8860b !important;
+}

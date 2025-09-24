@@ -108,21 +108,39 @@ export default function TitleBar() {
                 )}
               </a>
             </li>
+            <li className="nav-item">
+              <a
+                className={`btn btn-sm ms-auto nav-link fw-light d-flex position-relative menu-hover nav-link-custom${
+                  isDark ? " dark-font" : " light-font"
+                }`}
+                href="/dashboard/help"
+              >
+                <span className="me-1">
+                  <NoteIcon size={16} />
+                </span>
+                About
+                {pathname === "/dashboard/help" && (
+                  <span className="menu-active-indicator"></span>
+                )}
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`btn btn-sm ms-auto nav-link fw-light d-flex position-relative menu-hover nav-link-custom${
+                  isDark ? " dark-font" : " light-font"
+                }`}
+                href="/dashboard/logs"
+              >
+                <span className="me-1">
+                  <NoteIcon size={16} />
+                </span>
+                Sync-Logs
+                {pathname === "/dashboard/logs" && (
+                  <span className="menu-active-indicator"></span>
+                )}
+              </a>
+            </li>
           </ul>
-          <a
-            className={`btn btn-sm ms-auto nav-link fw-light d-flex position-relative menu-hover nav-link-custom${
-              isDark ? " dark-font" : " light-font"
-            }`}
-            href="/dashboard/help"
-          >
-            <span className="me-1">
-              <NoteIcon size={16} />
-            </span>
-            About
-            {pathname === "/dashboard/help" && (
-              <span className="menu-active-indicator"></span>
-            )}
-          </a>
         </div>
       </nav>
     </>
