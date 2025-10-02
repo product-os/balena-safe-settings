@@ -4,25 +4,208 @@
 
 ## Overview
 
-This feature adds a hub‑and‑spoke synchronization capability to Safe Settings.
+This adds the **hub‑and‑spoke synchronization capability** to Safe Settings.
 
-One central **master admin repository** (the hub) serves as the authoritative source of configuration which is automatically propagated to each organization’s **admin repository** (the spokes).
+One central **master admin repository** (the hub) serves as the authoritative source of configuration ('Master' Admin Config Repo) which is automatically propagated to each organization’s **admin repository** (the spokes).
 
-**Note:** When something changes in the central repo, only those changed files are copied to each affected ORG’s admin repo, so everything stays in sync with little manual work.
+**Note:** When something changes in the 'Master' repo (the hub), only those changed files are copied to each affected ORG’s admin repo, so everything stays in sync.
 
 ## Sync Lifecycle (High Level)
 
 ```mermaid
 graph TD
-A0(PR Closed) --> A1(HUB Admin Repo)
+A0(PR Closed Event) --> A1(HUB Admin Repo)
 A1(ORG Admin Repo) --> B(ORG Admin Repo)
 A1(HUB Admin Repo) --> C(ORG Admin Repo)
 A1(HUB Admin Repo) --> D(ORG Admin Repo)
 ```
 
-## Environment Variables & Inputs
+## Gettings Started
 
-Environment variables specific to the 'Sync-Feature'
+>**Note:** for the standard setup lets assume that Safe-Settings configuration on the Admin Config Repos (Spokes) are stored in `.github/`
+
+These are the basic steps to setup the Enterprise-Level Safe-Settings, using **Hub-sync** support.
+
+### ✅ Step 1: Register the App
+**Register the Safe-Settings App** in your Enterprise (Enterprise App) or in your Organization.
+
+For App "installation tragets" (Where can this GitHub App be installed?)
+Choose ***Any account***
+
+### ✅ Step 2: Install the App
+**Install the Safe-Settings App** in any Organzation that you would like Safe-Settings to manage.
+
+### ✅ Step 3: Create the 'Org-Level' Safe-Settings Admin Config Repo (Spokes)
+Create the Org-Level Repo that is your dedicated Safe-Settings Config Repo and will hold all Safe-Settings configurations for the Org.
+
+### ✅ Step 4: Create the 'Master' Safe-Settings Admin Config Repo (Hub)
+Choose any Organization where the Safe-Settings App is installed and create a 'Master' Safe-Settings Admin Config Repo. 
+
+The Repository requires a standard directory structure for storing the config data:
+```bash
+.github/
+└─ safe-settings/
+    ├── globals/
+    │   └── manifest.yml
+    └── organizations/
+        ├── org1/
+        │   └── ...yml
+        └── org2/
+            └── ...yml
+```
+
+Notes:
+- The `manifest.yml` is a required file, that defines rules for syncing **Global** Safe-Settings configurations. We will address the content format later.
+- `org1` and `org2` are just examples and should be replaced with the real names of the Orgs that you want to manage with the **Hub-Sync**.
+
+### ✅ Step 5: Configure the 'Master' Safe-Settings Admin Config Repo (Hub)
+
+The **Hub-Sync** feature supports two options
+1. **Organization Sync:**
+Any settings file in the `organizations/<ORG>` directory will be synced to the specific `<ORG>` (Spoke) Admin config Repo subfolder (eg.: <ORG>/.github/). Only updated files are sync'd to the ORG admin config Repo (spokes).
+1. **Global Sync:** Any settings file in the `globals/` directory will be synced to the specific `<ORG>` (Spoke) Admin config Repo subfolder (eg.: <ORG>/.github/).
+
+    :warning: The actual sync operation is based on the rules defined in the `globals/manifest.yml`. The rules provide fine grained control over the sync targets and sync strategy.
+
+These two options only require that you provide the files you would like to sync, in the correct sub-directory.
+
+#### ✅ Step 5.1: Configure the `manifest.yml` in the 'Master' Safe-Settings Admin Config Repo (Hub)
+
+The `manifest.yml` defines the sync rules for global settings distribution.
+- Sample `manifest.yml`
+
+  ```
+  rules:
+    - name: global-defaults
+      # specify the target ORG(s)
+      targets: 
+        - "*"
+      files:
+        - "*.yml"
+
+      # mergeStrategy: merge | overwrite | preserve
+      # --------------------------------------------
+      # merge     = use a PR to sync files 
+      # overwrite = sync all files to the target ORG(s) (no PR)
+      mergeStrategy: merge
+
+    - name: security-policies
+      # specify the target ORG(s)
+      targets: 
+        - "acme-*"
+        - "foo-bar"
+      files:
+        - settings.yml
+      mergeStrategy: overwrite
+      
+      # optional toggle, default true
+      # enabled: false 
+  ```
+
+### Example Rule Breakdown
+
+```yaml
+- name: global-defaults
+  targets: 
+    - "*"
+  files:
+    - "*.yml"
+  mergeStrategy: merge
+```
+- **Purpose:** Sync all YAML files to all organizations, merging changes via PR.
+
+```yaml
+- name: security-policies
+  targets: 
+    - "acme-*"
+    - "foo-bar"
+  files:
+    - settings.yml
+  mergeStrategy: overwrite
+  enabled: false
+```
+
+- **Purpose:** Overwrite `settings.yml` in specific organizations, but currently disabled.
+
+
+### `manifest.yml` Reference
+
+The `manifest.yml` file defines synchronization rules for Safe-Settings hub-and-spoke configuration management. Each rule specifies which organizations and files to target, and how to handle synchronization.
+
+### Top-Level Structure
+
+```yaml
+rules:
+  - name: <string>
+    targets: [<string>, ...]
+    files: [<string>, ...]
+    mergeStrategy: <merge|overwrite|preserve>
+    enabled: <true|false> # optional
+    # ...additional fields as needed
+```
+
+---
+
+### Elements
+
+#### `rules`
+- **Type:** Array of objects
+- **Description:** List of synchronization rules. Each rule controls how specific files are synced to target organizations.
+
+#### Rule Object
+
+##### `name`
+- **Type:** String
+- **Description:** Unique identifier for the rule. Used for reference and logging.
+- **Example:** `global-defaults`, `security-policies`
+
+##### `targets`
+- **Type:** Array of strings
+- **Description:** List of organization names or patterns to apply the rule to.
+  - `"*"`: All organizations
+  - `"acme-*"`: Organizations with names starting with `acme-`
+  - `"foo-bar"`: Specific organization
+- **Example:**  
+  ```yaml
+  targets:
+    - "*"
+    - "acme-*"
+    - "foo-bar"
+  ```
+
+##### `files`
+- **Type:** Array of strings
+- **Description:** File patterns to sync. Supports wildcards.
+  - `"*.yml"`: All YAML files
+  - `"settings.yml"`: Specific file
+- **Example:**  
+  ```yaml
+  files:
+    - "*.yml"
+    - "settings.yml"
+  ```
+
+##### `mergeStrategy`
+- **Type:** String (`merge`, `overwrite`, `preserve`)
+- **Description:** Determines how files are synced:
+  - `merge`:  use a PR to sync files 
+  - `overwrite`: Sync all files, replacing existing ones (direct commit, no PR)
+- **Example:**  
+  ```yaml
+  mergeStrategy: merge
+  ```
+
+##### `enabled`
+- **Type:** Boolean (optional)
+- **Description:** Toggle to enable or disable the rule. Default is `true`.
+- **Example:**  
+  ```yaml
+  enabled: false
+  ```
+
+---
+
+### Environment Variables & Inputs Specific to the **Hub-Sync** feature
 
 | Name | Purpose | Default |
 |------|---------|---------|
@@ -80,4 +263,3 @@ The following table summarizes the Safe Settings API endpoints:
   ```
 
 ---
-
