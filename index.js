@@ -572,7 +572,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
 
     params = Object.assign(context.repo(), { pull_number: pull_request.number })
 
-    const changes = await context.octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', params)
+    const changes = await context.octokit.pulls.listFiles(params)
     const files = changes.data.map(f => { return f.filename })
 
     const settingsModified = files.includes(Settings.FILE_PATH)
