@@ -73,11 +73,7 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
       const runtimeConfig = await configManager.loadGlobalSettingsYaml()
       const config = Object.assign({}, deploymentConfig, runtimeConfig)
       robot.log.debug(`config for ref ${ref} is ${JSON.stringify(config)}`)
-      if (ref) {
-        return Settings.syncSelectedRepos(nop, context, repos, subOrgs, config, ref)
-      } else {
-        return Settings.syncSelectedRepos(nop, context, repos, subOrgs, config)
-      }
+      return Settings.syncSelectedRepos(nop, context, repos, subOrgs, config, ref)
     } catch (e) {
       if (nop) {
         let filename = env.SETTINGS_FILE_PATH
