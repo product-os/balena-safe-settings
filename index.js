@@ -266,14 +266,9 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
     let repoChanges = getAllChangedRepoConfigs(payload, context.repo().owner)
 
     let subOrgChanges = getAllChangedSubOrgConfigs(payload)
-    const dedupedRepos = [...new Set(repoChanges.map(r => r.repo))].map(repo => {
-      return repoChanges.find(r => r.repo === repo)
-    })
-    repoChanges = dedupedRepos
-    const dedupedSubOrgs = [...new Set(subOrgChanges.map(s => s.repo))].map(repo => {
-      return subOrgChanges.find(s => s.repo === repo)
-    })
-    subOrgChanges = dedupedSubOrgs
+    repoChanges = repoChanges.filter((r, i, arr) => arr.findIndex(item => item.repo === r.repo) === i)
+
+    subOrgChanges = subOrgChanges.filter((s, i, arr) => arr.findIndex(item => item.repo === s.repo) === i)
     robot.log.debug(`deduped repos ${JSON.stringify(repoChanges)}`)
     robot.log.debug(`deduped subOrgs ${JSON.stringify(subOrgChanges)}`)
 
