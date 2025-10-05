@@ -263,9 +263,19 @@ module.exports = (robot, { getRouter }, Settings = require('./lib/settings')) =>
       return syncAllSettings(false, context)
     }
 
-    const repoChanges = getAllChangedRepoConfigs(payload, context.repo().owner)
+    let repoChanges = getAllChangedRepoConfigs(payload, context.repo().owner)
 
-    const subOrgChanges = getAllChangedSubOrgConfigs(payload)
+    let subOrgChanges = getAllChangedSubOrgConfigs(payload)
+    const dedupedRepos = [...new Set(repoChanges.map(r => r.repo))].map(name => {
+      return repoChanges.find(r => r.repo === name)
+    })
+    repoChanges = dedupedRepos
+    const dedupedSubOrgs = [...new Set(subOrgChanges.map(s => s.name))].map(name => {
+      return subOrgChanges.find(s => s.name === name)
+    })
+    subOrgChanges = dedupedSubOrgs
+    robot.log.debug(`deduped repos ${JSON.stringify(repoChanges)}`)
+    robot.log.debug(`deduped subOrgs ${JSON.stringify(subOrgChanges)}`)
 
     if (repoChanges.length > 0 || subOrgChanges.length > 0) {
       return syncSelectedSettings(false, context, repoChanges, subOrgChanges)
