@@ -1,6 +1,0 @@
-collaborators:
-  - username: bkeepers
-    permission: push
-
-  - username: hubot
-    permission: pull
