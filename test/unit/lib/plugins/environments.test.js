@@ -1,6 +1,6 @@
 const { when } = require('jest-when')
 const Environments = require('../../../../lib/plugins/environments')
-const NopCommand = require('../../../../lib/nopcommand');
+const NopCommand = require('../../../../lib/nopcommand')
 
 describe('Environments Plugin test suite', () => {
   let github
@@ -312,7 +312,7 @@ describe('Environments Plugin test suite', () => {
             protected_branches: false,
             custom_branch_policies: [
               {
-                names: ['main','dev'],
+                names: ['main', 'dev'],
                 type: 'branch'
               },
               {
@@ -389,7 +389,7 @@ describe('Environments Plugin test suite', () => {
           name: environmentName,
           deployment_branch_policy: {
             protected_branches: false,
-            custom_branch_policies: ["main", "dev"]
+            custom_branch_policies: ['main', 'dev']
           }
         }
       ], log, errors)
@@ -841,7 +841,7 @@ describe('Environments Plugin test suite', () => {
             protected_branches: false,
             custom_branch_policies: [
               {
-                names: ['main','dev'],
+                names: ['main', 'dev'],
                 type: 'branch'
               },
               {
@@ -855,7 +855,7 @@ describe('Environments Plugin test suite', () => {
           name: 'deployment-branch-policy-custom_environment_legacy',
           deployment_branch_policy: {
             protected_branches: false,
-            custom_branch_policies: ["main", "dev"]
+            custom_branch_policies: ['main', 'dev']
           }
         },
         {
@@ -1098,7 +1098,7 @@ describe('Environments Plugin test suite', () => {
             protected_branches: false,
             custom_branch_policies: [
               {
-                names: ['main','dev'],
+                names: ['main', 'dev'],
                 type: 'branch'
               },
               {
@@ -1112,7 +1112,7 @@ describe('Environments Plugin test suite', () => {
           name: 'deployment-branch-policy-custom_environment_legacy',
           deployment_branch_policy: {
             protected_branches: false,
-            custom_branch_policies: ["main", "dev"]
+            custom_branch_policies: ['main', 'dev']
           }
         },
         {
@@ -1166,7 +1166,7 @@ describe('Environments Plugin test suite', () => {
             protected_branches: false,
             custom_branch_policies: [
               {
-                names: ['main','dev'],
+                names: ['main', 'dev'],
                 type: 'branch'
               },
               {
@@ -1180,7 +1180,7 @@ describe('Environments Plugin test suite', () => {
           name: 'new-deployment-branch-policy-custom-legacy',
           deployment_branch_policy: {
             protected_branches: false,
-            custom_branch_policies: ["main", "dev"]
+            custom_branch_policies: ['main', 'dev']
           }
         },
         {
@@ -1396,37 +1396,412 @@ describe('Environments Plugin test suite', () => {
 })
 
 describe('nopifyRequest', () => {
-  let github;
-  let plugin;
-  const org = 'bkeepers';
-  const repo = 'test';
-  const environment_name = 'test-environment';
-  const url = 'PUT /repos/:org/:repo/environments/:environment_name';
-  const options = { org, repo, environment_name, wait_timer: 1 };
-  const description = 'Update environment wait timer';
+  let github
+  let plugin
+  const org = 'bkeepers'
+  const repo = 'test'
+  const environment_name = 'test-environment'
+  const url = 'PUT /repos/:org/:repo/environments/:environment_name'
+  const options = { org, repo, environment_name, wait_timer: 1 }
+  const description = 'Update environment wait timer'
 
   beforeEach(() => {
     github = {
       request: jest.fn(() => Promise.resolve(true))
-    };
-    plugin = new Environments(undefined, github, { owner: org, repo }, [], { debug: jest.fn(), error: console.error }, []);
-  });
+    }
+    plugin = new Environments(undefined, github, { owner: org, repo }, [], { debug: jest.fn(), error: console.error }, [])
+  })
 
   it('should make a request when nop is false', async () => {
-    plugin.nop = false;
+    plugin.nop = false
 
-    await plugin.nopifyRequest(url, options, description);
+    await plugin.nopifyRequest(url, options, description)
 
-    expect(github.request).toHaveBeenCalledWith(url, options);
-  });
+    expect(github.request).toHaveBeenCalledWith(url, options)
+  })
 
   it('should return NopCommand when nop is true', async () => {
-    plugin.nop = true;
+    plugin.nop = true
 
-    const result = await plugin.nopifyRequest(url, options, description);
+    const result = await plugin.nopifyRequest(url, options, description)
 
     expect(result).toEqual([
       new NopCommand('Environments', { owner: org, repo }, url, description)
-    ]);
-  });
-});
+    ])
+  })
+})
+
+describe('Noop mode behavior (Issue #799)', () => {
+  let github
+  const org = 'bkeepers'
+  const repo = 'test'
+  const log = { debug: jest.fn(), error: console.error }
+  const errors = []
+
+  beforeEach(() => {
+    github = {
+      request: jest.fn(() => Promise.resolve(true))
+    }
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('remove() in noop mode', () => {
+    it('should NOT call github.request with DELETE when nop=true', async () => {
+      // Arrange: plugin with nop=true
+      const plugin = new Environments(true, github, { owner: org, repo }, [], log, errors)
+      const existingEnvironment = { name: 'old-env' }
+
+      // Act: call remove directly
+      await plugin.remove(existingEnvironment)
+
+      // Assert: github.request should NOT have been called with DELETE
+      expect(github.request).not.toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name',
+        expect.anything()
+      )
+    })
+
+    it('should return NopCommand from remove() when nop=true', async () => {
+      // Arrange: plugin with nop=true
+      const plugin = new Environments(true, github, { owner: org, repo }, [], log, errors)
+      const existingEnvironment = { name: 'old-env' }
+
+      // Act: call remove directly
+      const result = await plugin.remove(existingEnvironment)
+
+      // Assert: should return NopCommand array
+      expect(result).toEqual([
+        expect.objectContaining({
+          plugin: 'Environments',
+          repo,
+          action: expect.objectContaining({
+            msg: 'Delete environment'
+          })
+        })
+      ])
+    })
+
+    it('should call github.request with DELETE when nop=false', async () => {
+      // Arrange: plugin with nop=false
+      const plugin = new Environments(false, github, { owner: org, repo }, [], log, errors)
+      const existingEnvironment = { name: 'old-env' }
+
+      // Act: call remove directly
+      await plugin.remove(existingEnvironment)
+
+      // Assert: github.request should have been called with DELETE
+      expect(github.request).toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name',
+        expect.objectContaining({
+          org,
+          repo,
+          environment_name: 'old-env'
+        })
+      )
+    })
+  })
+
+  describe('sync() removing environments in noop mode', () => {
+    it('should NOT send DELETE request when removing environment in nop mode', async () => {
+      // Arrange: existing environment that is NOT in config (should be deleted)
+      const plugin = new Environments(true, github, { owner: org, repo }, [], log, errors)
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments', { org, repo })
+        .mockResolvedValue({
+          data: {
+            environments: [
+              {
+                name: 'old-env-to-delete',
+                protection_rules: [],
+                deployment_branch_policy: null
+              }
+            ]
+          }
+        })
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments/:environment_name/variables', { org, repo, environment_name: 'old-env-to-delete' })
+        .mockResolvedValue({ data: { variables: [] } })
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments/:environment_name/deployment_protection_rules', { org, repo, environment_name: 'old-env-to-delete' })
+        .mockResolvedValue({ data: { custom_deployment_protection_rules: [] } })
+
+      // Act: run sync
+      await plugin.sync()
+
+      // Assert: DELETE should NOT have been called
+      expect(github.request).not.toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name',
+        expect.objectContaining({ environment_name: 'old-env-to-delete' })
+      )
+    })
+
+    it('should NOT send DELETE request when environment is renamed in nop mode', async () => {
+      // Arrange: existing environment "old-name" not in config, config has "new-name" -> old should be deleted, new added
+      const plugin = new Environments(true, github, { owner: org, repo }, [
+        { name: 'new-name' }
+      ], log, errors)
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments', { org, repo })
+        .mockResolvedValue({
+          data: {
+            environments: [
+              {
+                name: 'old-name',
+                protection_rules: [],
+                deployment_branch_policy: null
+              }
+            ]
+          }
+        })
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments/:environment_name/variables', { org, repo, environment_name: 'old-name' })
+        .mockResolvedValue({ data: { variables: [] } })
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments/:environment_name/deployment_protection_rules', { org, repo, environment_name: 'old-name' })
+        .mockResolvedValue({ data: { custom_deployment_protection_rules: [] } })
+
+      // Act: run sync
+      await plugin.sync()
+
+      // Assert: DELETE should NOT have been called for old-name
+      expect(github.request).not.toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name',
+        expect.objectContaining({ environment_name: 'old-name' })
+      )
+
+      // Assert: PUT should NOT have been called for new-name (since we're in nop mode)
+      expect(github.request).not.toHaveBeenCalledWith(
+        'PUT /repos/:org/:repo/environments/:environment_name',
+        expect.objectContaining({ environment_name: 'new-name' })
+      )
+    })
+  })
+
+  describe('update() deleting variables in noop mode', () => {
+    it('should NOT send DELETE request when removing variables in nop mode', async () => {
+      // Arrange: existing environment with a variable that config doesn't have
+      const plugin = new Environments(true, github, { owner: org, repo }, [
+        {
+          name: 'test-env',
+          variables: [] // config has no variables, existing has one -> should delete
+        }
+      ], log, errors)
+
+      const existing = {
+        name: 'test-env',
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: [],
+        deployment_branch_policy: null,
+        variables: [{ name: 'old_var', value: 'old_value' }],
+        deployment_protection_rules: []
+      }
+
+      const attrs = {
+        name: 'test-env',
+        variables: []
+      }
+
+      // Act: call update directly
+      await plugin.update(existing, attrs)
+
+      // Assert: DELETE should NOT have been called for the variable
+      expect(github.request).not.toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name/variables/:variable_name',
+        expect.anything()
+      )
+    })
+  })
+
+  describe('update() deleting deployment branch policies in noop mode', () => {
+    it('should NOT send DELETE request when updating branch policies in nop mode', async () => {
+      // Arrange: plugin with nop=true
+      const plugin = new Environments(true, github, { owner: org, repo }, [
+        {
+          name: 'test-env',
+          deployment_branch_policy: {
+            protected_branches: false,
+            custom_branch_policies: [{ name: 'new-branch', type: 'branch' }]
+          }
+        }
+      ], log, errors)
+
+      // Mock the existing policies fetch that happens in update()
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/environments/:environment_name/deployment-branch-policies', expect.objectContaining({ environment_name: 'test-env' }))
+        .mockResolvedValue({
+          data: {
+            branch_policies: [{ id: 123, name: 'old-branch', type: 'branch' }]
+          }
+        })
+
+      const existing = {
+        name: 'test-env',
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: [],
+        deployment_branch_policy: {
+          protected_branches: false,
+          custom_branch_policies: [{ name: 'old-branch', type: 'branch' }]
+        },
+        variables: [],
+        deployment_protection_rules: []
+      }
+
+      const attrs = {
+        name: 'test-env',
+        deployment_branch_policy: {
+          protected_branches: false,
+          custom_branch_policies: [{ name: 'new-branch', type: 'branch' }]
+        }
+      }
+
+      // Act: call update directly
+      await plugin.update(existing, attrs)
+
+      // Assert: DELETE should NOT have been called for branch policies
+      expect(github.request).not.toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name/deployment-branch-policies/:branch_policy_id',
+        expect.anything()
+      )
+    })
+  })
+
+  describe('update() deleting deployment protection rules in noop mode', () => {
+    it('should NOT send DELETE request when removing protection rules in nop mode', async () => {
+      // Arrange: plugin with nop=true, existing has rule that config doesn't have
+      const plugin = new Environments(true, github, { owner: org, repo }, [
+        {
+          name: 'test-env',
+          deployment_protection_rules: [] // config has no rules
+        }
+      ], log, errors)
+
+      const existing = {
+        name: 'test-env',
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: [],
+        deployment_branch_policy: null,
+        variables: [],
+        deployment_protection_rules: [{ app_id: 123, id: 456 }]
+      }
+
+      const attrs = {
+        name: 'test-env',
+        deployment_protection_rules: []
+      }
+
+      // Act: call update directly
+      await plugin.update(existing, attrs)
+
+      // Assert: DELETE should NOT have been called for protection rules
+      expect(github.request).not.toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/environments/:environment_name/deployment_protection_rules/:rule_id',
+        expect.anything()
+      )
+    })
+  })
+
+  describe('add() in noop mode', () => {
+    it('should NOT call github.request with PUT when nop=true', async () => {
+      // Arrange: plugin with nop=true
+      const plugin = new Environments(true, github, { owner: org, repo }, [], log, errors)
+      const newEnvironment = {
+        name: 'new-env',
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: []
+      }
+
+      // Act: call add directly
+      await plugin.add(newEnvironment)
+
+      // Assert: github.request should NOT have been called with PUT
+      expect(github.request).not.toHaveBeenCalledWith(
+        'PUT /repos/:org/:repo/environments/:environment_name',
+        expect.anything()
+      )
+    })
+
+    it('should return NopCommand from add() when nop=true', async () => {
+      // Arrange: plugin with nop=true
+      const plugin = new Environments(true, github, { owner: org, repo }, [], log, errors)
+      const newEnvironment = {
+        name: 'new-env',
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: []
+      }
+
+      // Act: call add directly
+      const result = await plugin.add(newEnvironment)
+
+      // Assert: should return NopCommand array
+      expect(result).toEqual([
+        expect.objectContaining({
+          plugin: 'Environments',
+          repo: repo,
+          action: expect.objectContaining({
+            msg: 'Update environment settings'
+          })
+        })
+      ])
+    })
+  })
+
+  describe('update() return values in noop mode', () => {
+    it('should return NopCommands from update() when nop=true and variables change', async () => {
+      // Arrange: plugin with nop=true, variable changes trigger nopifyRequest calls
+      const plugin = new Environments(true, github, { owner: org, repo }, [
+        {
+          name: 'test-env',
+          variables: [{ name: 'new_var', value: 'new_value' }]
+        }
+      ], log, errors)
+
+      const existing = {
+        name: 'test-env',
+        wait_timer: 0,
+        prevent_self_review: false,
+        reviewers: [],
+        deployment_branch_policy: null,
+        variables: [{ name: 'old_var', value: 'old_value' }],
+        deployment_protection_rules: []
+      }
+
+      const attrs = {
+        name: 'test-env',
+        variables: [{ name: 'new_var', value: 'new_value' }]
+      }
+
+      // Act: call update directly
+      const result = await plugin.update(existing, attrs)
+
+      // Assert: should return NopCommand array with both create and delete operations
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          plugin: 'Environments',
+          action: expect.objectContaining({
+            msg: 'Create environment variable'
+          })
+        }),
+        expect.objectContaining({
+          plugin: 'Environments',
+          action: expect.objectContaining({
+            msg: 'Delete environment variable'
+          })
+        })
+      ]))
+    })
+  })
+})
