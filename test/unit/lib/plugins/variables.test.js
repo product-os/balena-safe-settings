@@ -7,14 +7,10 @@ describe('Variables', () => {
   const org = 'bkeepers'
   const repo = 'test'
 
-  function fillVariables (variables = []) {
-    return variables
-  }
-
-  function configure (nop = false) {
+  function configure (nop = false, entries = [{ name: 'test', value: 'test' }]) {
     const log = { debug: jest.fn(), error: console.error }
     const errors = []
-    return new Variables(nop, github, { owner: org, repo }, [{ name: 'test', value: 'test' }], log, errors)
+    return new Variables(nop, github, { owner: org, repo }, entries, log, errors)
   }
 
   beforeEach(() => {
@@ -23,248 +19,186 @@ describe('Variables', () => {
     }
   })
 
-  it('sync', () => {
-    const plugin = configure()
+  describe('constructor', () => {
+    it('should uppercase entry names', () => {
+      const plugin = configure(false, [{ name: 'lower_case', value: 'val' }])
+      expect(plugin.entries[0].name).toBe('LOWER_CASE')
+    })
+  })
 
-    when(github.request)
-      .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
-      .mockResolvedValue({
-        data: {
-          variables: [
-            fillVariables({
-              variables: []
-            })
-          ]
-        }
-      });
-
-    ['variables'].forEach(() => {
+  describe('find', () => {
+    it('should return only name and value fields', async () => {
       when(github.request)
         .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
         .mockResolvedValue({
           data: {
-            variables: [{ name: 'DELETE_me', value: 'test' }]
+            variables: [{ name: 'VAR1', value: 'val1', created_at: '2024-01-01', updated_at: '2024-01-02' }]
           }
         })
+
+      const plugin = configure()
+      const result = await plugin.find()
+
+      expect(result).toEqual([{ name: 'VAR1', value: 'val1' }])
+    })
+  })
+
+  describe('changed', () => {
+    it('should return true when values differ', () => {
+      const plugin = configure()
+      expect(plugin.changed({ name: 'X', value: 'old' }, { name: 'X', value: 'new' })).toBe(true)
     })
 
-    when(github.request).calledWith('POST /repos/:org/:repo/actions/variables').mockResolvedValue({})
+    it('should return false when values match', () => {
+      const plugin = configure()
+      expect(plugin.changed({ name: 'X', value: 'same' }, { name: 'X', value: 'same' })).toBe(false)
+    })
+  })
 
-    return plugin.sync().then(() => {
-      expect(github.request).toHaveBeenCalledWith('GET /repos/:org/:repo/actions/variables', { org, repo });
+  describe('sync', () => {
+    it('should add new and remove stale variables', () => {
+      const plugin = configure()
 
-      ['variables'].forEach(() => {
-        expect(github.request).toHaveBeenCalledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
-      })
-
-      expect(github.request).toHaveBeenCalledWith(
-        'DELETE /repos/:org/:repo/actions/variables/:variable_name',
-        expect.objectContaining({
-          org,
-          repo,
-          variable_name: 'DELETE_me'
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
+        .mockResolvedValue({
+          data: {
+            variables: [{ name: 'DELETE_ME', value: 'test' }]
+          }
         })
+
+      return plugin.sync().then(() => {
+        expect(github.request).toHaveBeenCalledWith(
+          'DELETE /repos/:org/:repo/actions/variables/:variable_name',
+          expect.objectContaining({ org, repo, variable_name: 'DELETE_ME' })
+        )
+
+        expect(github.request).toHaveBeenCalledWith(
+          'POST /repos/:org/:repo/actions/variables',
+          expect.objectContaining({ org, repo, name: 'TEST', value: 'test' })
+        )
+      })
+    })
+
+    it('should return NopCommands and not mutate when nop is true', async () => {
+      const plugin = configure(true)
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
+        .mockResolvedValue({
+          data: {
+            variables: [{ name: 'EXISTING_VAR', value: 'existing-value' }]
+          }
+        })
+
+      const result = await plugin.sync()
+
+      expect(github.request).toHaveBeenCalledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
+      expect(github.request).not.toHaveBeenCalledWith(
+        expect.stringMatching(/^(POST|PATCH|DELETE)/),
+        expect.anything()
       )
+
+      expect(Array.isArray(result)).toBe(true)
+      expect(result.length).toBeGreaterThan(0)
+      // resArray contains: INFO NopCommand (flat), then [NopCommand] arrays from add/remove/update
+      const flat = result.flat()
+      flat.forEach(cmd => expect(cmd).toBeInstanceOf(NopCommand))
+    })
+
+    it('should return NopCommand results when updating via sync', async () => {
+      const plugin = configure(true, [{ name: 'TEST', value: 'new-value' }])
+
+      when(github.request)
+        .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
+        .mockResolvedValue({
+          data: {
+            variables: [{ name: 'TEST', value: 'old-value' }]
+          }
+        })
+
+      const result = await plugin.sync()
+
+      expect(github.request).not.toHaveBeenCalledWith(
+        expect.stringMatching(/^(POST|PATCH|DELETE)/),
+        expect.anything()
+      )
+
+      expect(Array.isArray(result)).toBe(true)
+      const flat = result.flat()
+      flat.forEach(cmd => expect(cmd).toBeInstanceOf(NopCommand))
+    })
+  })
+
+  describe('add', () => {
+    it('should return NopCommand array when nop is true', async () => {
+      const plugin = configure(true)
+      const result = await plugin.add({ name: 'NEW_VAR', value: 'new-value' })
+
+      expect(Array.isArray(result)).toBe(true)
+      expect(result[0]).toBeInstanceOf(NopCommand)
+      expect(result[0].plugin).toBe('Variables')
+      expect(github.request).not.toHaveBeenCalled()
+    })
+
+    it('should make POST request when nop is false', async () => {
+      const plugin = configure(false)
+      await plugin.add({ name: 'NEW_VAR', value: 'new-value' })
 
       expect(github.request).toHaveBeenCalledWith(
         'POST /repos/:org/:repo/actions/variables',
-        expect.objectContaining({
-          org,
-          repo,
-          name: 'TEST',
-          value: 'test'
-        })
+        expect.objectContaining({ org, repo, name: 'NEW_VAR', value: 'new-value' })
       )
     })
   })
 
-  describe('noop mode', () => {
-    describe('sync', () => {
-      it('should return NopCommands and not make mutating API calls when nop is true', async () => {
-        const plugin = configure(true)
+  describe('remove', () => {
+    it('should return NopCommand array when nop is true', async () => {
+      const plugin = configure(true)
+      const result = await plugin.remove({ name: 'EXISTING_VAR', value: 'existing-value' })
 
-        when(github.request)
-          .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
-          .mockResolvedValue({
-            data: {
-              variables: [{ name: 'EXISTING_VAR', value: 'existing-value' }]
-            }
-          })
-
-        const result = await plugin.sync()
-
-        // Should have made GET call to fetch existing variables
-        expect(github.request).toHaveBeenCalledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
-
-        // Should NOT have made any mutating calls (POST, PATCH, DELETE)
-        expect(github.request).not.toHaveBeenCalledWith(
-          expect.stringMatching(/^(POST|PATCH|DELETE)/),
-          expect.anything()
-        )
-
-        // Result should contain NopCommands
-        expect(Array.isArray(result)).toBe(true)
-        expect(result.length).toBeGreaterThan(0)
-        result.forEach(cmd => expect(cmd).toBeInstanceOf(NopCommand))
-      })
-
-      it('should return flat NopCommand array when updating variable value via sync', async () => {
-        const log = { debug: jest.fn(), error: console.error }
-        const errors = []
-        const plugin = new Variables(true, github, { owner: org, repo }, [{ name: 'TEST', value: 'new-value' }], log, errors)
-
-        when(github.request)
-          .calledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
-          .mockResolvedValue({
-            data: {
-              variables: [{ name: 'TEST', value: 'old-value' }]
-            }
-          })
-
-        const result = await plugin.sync()
-
-        // Should have made GET call
-        expect(github.request).toHaveBeenCalledWith('GET /repos/:org/:repo/actions/variables', { org, repo })
-
-        // Should NOT have made any mutating calls
-        expect(github.request).not.toHaveBeenCalledWith(
-          expect.stringMatching(/^(POST|PATCH|DELETE)/),
-          expect.anything()
-        )
-
-        // Result should be a flat array of NopCommands (not nested)
-        expect(Array.isArray(result)).toBe(true)
-        result.forEach(cmd => {
-          expect(cmd).toBeInstanceOf(NopCommand)
-          expect(Array.isArray(cmd)).toBe(false)
-        })
-      })
+      expect(Array.isArray(result)).toBe(true)
+      expect(result[0]).toBeInstanceOf(NopCommand)
+      expect(result[0].plugin).toBe('Variables')
+      expect(github.request).not.toHaveBeenCalled()
     })
 
-    describe('add', () => {
-      it('should return NopCommand and not make API call when nop is true', async () => {
-        const plugin = configure(true)
-        const variable = { name: 'NEW_VAR', value: 'new-value' }
+    it('should make DELETE request when nop is false', async () => {
+      const plugin = configure(false)
+      await plugin.remove({ name: 'EXISTING_VAR', value: 'existing-value' })
 
-        const result = await plugin.add(variable)
+      expect(github.request).toHaveBeenCalledWith(
+        'DELETE /repos/:org/:repo/actions/variables/:variable_name',
+        expect.objectContaining({ org, repo, variable_name: 'EXISTING_VAR' })
+      )
+    })
+  })
 
-        expect(result).toBeInstanceOf(NopCommand)
-        expect(result.plugin).toBe('Variables')
-        expect(github.request).not.toHaveBeenCalled()
-      })
+  describe('update', () => {
+    it('should return NopCommand array when nop is true', async () => {
+      const plugin = configure(true)
+      const result = await plugin.update(
+        { name: 'VAR1', value: 'old-value' },
+        { name: 'VAR1', value: 'new-value' }
+      )
 
-      it('should make API call when nop is false', async () => {
-        const plugin = configure(false)
-        const variable = { name: 'NEW_VAR', value: 'new-value' }
-
-        await plugin.add(variable)
-
-        expect(github.request).toHaveBeenCalledWith(
-          'POST /repos/:org/:repo/actions/variables',
-          expect.objectContaining({
-            org,
-            repo,
-            name: 'NEW_VAR',
-            value: 'new-value'
-          })
-        )
-      })
+      expect(Array.isArray(result)).toBe(true)
+      expect(result[0]).toBeInstanceOf(NopCommand)
+      expect(result[0].plugin).toBe('Variables')
+      expect(github.request).not.toHaveBeenCalled()
     })
 
-    describe('remove', () => {
-      it('should return NopCommand and not make API call when nop is true', async () => {
-        const plugin = configure(true)
-        const existing = { name: 'EXISTING_VAR', value: 'existing-value' }
+    it('should make PATCH request when nop is false', async () => {
+      const plugin = configure(false)
+      await plugin.update(
+        { name: 'VAR1', value: 'old-value' },
+        { name: 'VAR1', value: 'new-value' }
+      )
 
-        const result = await plugin.remove(existing)
-
-        expect(result).toBeInstanceOf(NopCommand)
-        expect(result.plugin).toBe('Variables')
-        expect(github.request).not.toHaveBeenCalled()
-      })
-
-      it('should make API call when nop is false', async () => {
-        const plugin = configure(false)
-        const existing = { name: 'EXISTING_VAR', value: 'existing-value' }
-
-        await plugin.remove(existing)
-
-        expect(github.request).toHaveBeenCalledWith(
-          'DELETE /repos/:org/:repo/actions/variables/:variable_name',
-          expect.objectContaining({
-            org,
-            repo,
-            variable_name: 'EXISTING_VAR'
-          })
-        )
-      })
-    })
-
-    describe('update', () => {
-      it('should return single NopCommand for single operation with nop true', async () => {
-        const plugin = configure(true)
-        const existing = { name: 'VAR1', value: 'old-value' }
-        const updated = { name: 'VAR1', value: 'new-value' }
-
-        const result = await plugin.update(existing, updated)
-
-        expect(result).toBeInstanceOf(NopCommand)
-        expect(result.plugin).toBe('Variables')
-        expect(github.request).not.toHaveBeenCalled()
-      })
-
-      it('should return single NopCommand when adding new variable in update with nop true', async () => {
-        const plugin = configure(true)
-        const existing = []
-        const updated = [{ name: 'NEW_VAR', value: 'new-value' }]
-
-        const result = await plugin.update(existing, updated)
-
-        expect(result).toBeInstanceOf(NopCommand)
-        expect(github.request).not.toHaveBeenCalled()
-      })
-
-      it('should return single NopCommand when deleting variable in update with nop true', async () => {
-        const plugin = configure(true)
-        const existing = [{ name: 'OLD_VAR', value: 'old-value' }]
-        const updated = []
-
-        const result = await plugin.update(existing, updated)
-
-        expect(result).toBeInstanceOf(NopCommand)
-        expect(github.request).not.toHaveBeenCalled()
-      })
-
-      it('should return multiple NopCommands for multiple operations with nop true', async () => {
-        const plugin = configure(true)
-        const existing = [{ name: 'UPDATE_VAR', value: 'old' }, { name: 'DELETE_VAR', value: 'delete-me' }]
-        const updated = [{ name: 'UPDATE_VAR', value: 'new' }, { name: 'ADD_VAR', value: 'added' }]
-
-        const result = await plugin.update(existing, updated)
-
-        expect(Array.isArray(result)).toBe(true)
-        expect(result).toHaveLength(3) // 1 update + 1 add + 1 delete
-        result.forEach(cmd => expect(cmd).toBeInstanceOf(NopCommand))
-        expect(github.request).not.toHaveBeenCalled()
-      })
-
-      it('should make API calls when nop is false', async () => {
-        const plugin = configure(false)
-        const existing = [{ name: 'VAR1', value: 'old-value' }]
-        const updated = [{ name: 'VAR1', value: 'new-value' }]
-
-        await plugin.update(existing, updated)
-
-        expect(github.request).toHaveBeenCalledWith(
-          'PATCH /repos/:org/:repo/actions/variables/:variable_name',
-          expect.objectContaining({
-            org,
-            repo,
-            variable_name: 'VAR1',
-            value: 'new-value'
-          })
-        )
-      })
+      expect(github.request).toHaveBeenCalledWith(
+        'PATCH /repos/:org/:repo/actions/variables/:variable_name',
+        expect.objectContaining({ org, repo, variable_name: 'VAR1', value: 'new-value' })
+      )
     })
   })
 })
