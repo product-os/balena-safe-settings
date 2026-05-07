@@ -440,6 +440,15 @@
               "notifications_disabled"
             ]
           },
+          "permission": {
+            "type": "string",
+            "description": "**Closing down notice**. The permission that new repositories will be added to the team with when none is specified.",
+            "enum": [
+              "pull",
+              "push"
+            ],
+            "default": "pull"
+          },
           "parent_team_id": {
             "type": "integer",
             "description": "The ID of a team to set as the parent team."
